@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Frete ANTT – Grupo Cereal</title>
+  <meta name="theme-color" content="#1b5e20">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topo">
+    <h1>Frete ANTT</h1>
+    <span class="sub">Grupo Cereal · roteirização e piso mínimo</span>
+  </header>
+
+  <div id="mapa"></div>
+
+  <nav class="abas">
+    <button data-aba="rota" class="ativa">Rota</button>
+    <button data-aba="frete">Frete</button>
+    <button data-aba="fazendas">Fazendas</button>
+    <button data-aba="tabela">Tabela ANTT</button>
+  </nav>
+
+  <main>
+    <!-- ROTA -->
+    <section id="aba-rota" class="aba ativa">
+      <label>Origem
+        <select id="origem"></select>
+      </label>
+
+      <div class="linha-titulo">
+        <h2>Paradas</h2>
+        <span id="qtd-paradas" class="pill">0</span>
+      </div>
+      <div class="busca">
+        <input id="busca-parada" type="search" placeholder="Buscar fazenda para adicionar…" autocomplete="off">
+        <ul id="sugestoes" class="sugestoes"></ul>
+      </div>
+      <p class="dica">Ou toque no mapa e use “Adicionar ponto livre”.</p>
+      <ol id="lista-paradas" class="paradas"></ol>
+
+      <label class="check"><input type="checkbox" id="volta-origem" checked> Rota volta à origem (ida e volta)</label>
+
+      <div class="botoes">
+        <button id="btn-otimizar" class="sec">Otimizar ordem</button>
+        <button id="btn-rota" class="pri">Calcular rota</button>
+      </div>
+      <div class="botoes">
+        <button id="btn-limpar" class="sec">Limpar paradas</button>
+        <button id="btn-gmaps" class="sec">Abrir no Google Maps</button>
+      </div>
+
+      <div id="resumo-rota" class="card oculto"></div>
+    </section>
+
+    <!-- FRETE -->
+    <section id="aba-frete" class="aba">
+      <label>Tipo de carga
+        <select id="tipo-carga"></select>
+      </label>
+      <div class="duas">
+        <label>Nº de eixos
+          <select id="eixos">
+            <option>2</option><option>3</option><option>4</option><option>5</option>
+            <option selected>6</option><option>7</option><option>8</option><option>9</option>
+          </select>
+        </label>
+        <label>Distância de ida (km)
+          <input id="distancia" type="number" min="1" max="99999" step="1" inputmode="numeric">
+        </label>
+      </div>
+      <label class="check"><input type="checkbox" id="composicao" checked> É composição veicular? (veículo automotor + implemento, ou caminhão simples)</label>
+      <label class="check"><input type="checkbox" id="alto-desempenho"> É alto desempenho?</label>
+      <label class="check"><input type="checkbox" id="retorno-vazio"> Retorno vazio?</label>
+      <label id="lbl-dist-retorno" class="oculto">Distância do retorno vazio (km)
+        <input id="distancia-retorno" type="number" min="0" step="1" inputmode="numeric">
+      </label>
+      <label>Pedágio (R$, opcional – somado ao piso)
+        <input id="pedagio" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00">
+      </label>
+      <div class="duas">
+        <label>Carga (t, opcional – p/ R$/t)
+          <input id="toneladas" type="number" min="0" step="0.1" inputmode="decimal">
+        </label>
+        <label>&nbsp;
+          <button id="btn-usar-rota" class="sec">Usar km da rota</button>
+        </label>
+      </div>
+
+      <div id="resultado-frete" class="card"></div>
+      <p class="nota" id="nota-frete"></p>
+      <div class="botoes tres">
+        <button id="btn-compartilhar" class="pri">Compartilhar</button>
+        <button id="btn-salvar-cot" class="sec">Salvar</button>
+        <button id="btn-pdf" class="sec">PDF</button>
+      </div>
+
+      <div class="linha-titulo">
+        <h2>Cotações salvas</h2>
+        <span id="qtd-cot" class="pill">0</span>
+      </div>
+      <ul id="lista-cot" class="fazendas"></ul>
+    </section>
+
+    <!-- FAZENDAS -->
+    <section id="aba-fazendas" class="aba">
+      <p id="origem-fazendas" class="card"></p>
+      <p>Para usar outra lista, importe um arquivo <b>KMZ/KML</b> (Google Earth, Maps.me) ou uma planilha <b>Excel (.xlsx)</b> com colunas de nome, latitude e longitude. A lista importada fica salva só neste aparelho.</p>
+      <label class="arquivo">
+        <input id="arquivo" type="file" accept=".kmz,.kml,.xlsx,.xls,.csv">
+        <span>Escolher arquivo…</span>
+      </label>
+      <label class="check"><input type="checkbox" id="substituir" checked> Substituir as fazendas já importadas</label>
+      <p id="status-import" class="dica"></p>
+
+      <div class="card">
+        <h2>Km e frete de todas as fazendas</h2>
+        <p class="dica">Calcula a distância por estrada de cada fazenda até as duas unidades e escolhe a mais próxima. O piso ANTT usa o tipo de carga, os eixos e as opções da aba Frete no momento de exportar.</p>
+        <progress id="prog-lote" class="oculto" max="1" value="0"></progress>
+        <p id="status-lote" class="dica"></p>
+        <div class="botoes">
+          <button id="btn-lote" class="pri">Calcular todas</button>
+          <button id="btn-exportar-lote" class="sec">Exportar Excel</button>
+        </div>
+      </div>
+
+      <input id="filtro-fazendas" type="search" placeholder="Filtrar fazendas…">
+      <ul id="lista-fazendas" class="fazendas"></ul>
+      <button id="btn-apagar-fazendas" class="sec perigo">Apagar importadas e voltar à lista do app</button>
+    </section>
+
+    <!-- TABELA -->
+    <section id="aba-tabela" class="aba">
+      <div id="info-tabela" class="card"></div>
+      <label>Tabela
+        <select id="sel-tabela">
+          <option value="A">A – Carga lotação</option>
+          <option value="B">B – Só veículo automotor</option>
+          <option value="C">C – Lotação de alto desempenho</option>
+          <option value="D">D – Só veículo automotor, alto desempenho</option>
+        </select>
+      </label>
+      <div class="rolagem"><table id="grade-tabela" class="grade"></table></div>
+      <p class="nota">Piso (ida) = Distância × CCD + CC. Retorno vazio = 0,92 × Distância × CCD.
+        Eixos sem coeficiente usam a quantidade imediatamente inferior (ou superior, se não houver inferior), como determina a Resolução ANTT nº 5.867/2020.</p>
+      <p class="nota">Para atualizar: rode <code>atualizar_tabela_antt.py</code> no computador e publique o novo <code>antt-tabela.js</code>, ou importe aqui um arquivo JSON da tabela.</p>
+      <label class="arquivo">
+        <input id="arquivo-tabela" type="file" accept=".json,.js">
+        <span>Importar tabela (JSON)…</span>
+      </label>
+      <button id="btn-tabela-padrao" class="sec">Voltar à tabela embutida</button>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <div id="impressao"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="antt-tabela.js"></script>
+  <script src="fazendas-padrao.js"></script>
+  <script src="frete.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
